@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <title>Student Writing Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root { 
+            --header-h: 55px; 
+            --footer-h: 60px;
+            --header-bg: #4a148c; 
+            --btn-blue: #0070c0; 
+            --bg-gray: #f2f2f2; 
+            --correct-green: #d4edda; 
+            --wrong-red: #f8d7da; 
+        }
+        * { box-sizing: border-box; }
+        
+        /* --- APP SHELL LAYOUT --- */
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            background: var(--bg-gray); 
+            height: 100dvh; 
+            overflow: hidden; 
+            position: fixed; 
+            width: 100%;
+        }
+
+        header { 
+            position: fixed; 
+            top: 0; left: 0; right: 0; 
+            height: var(--header-h); 
+            background: var(--header-bg); 
+            color: white; 
+            padding: 0 20px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 3px solid #ffcc00; 
+            z-index: 50;
+        }
+
+        footer { 
+            position: fixed; 
+            bottom: 0; left: 0; right: 0; 
+            height: var(--footer-h);
+            background: #e0e0e0; 
+            border-top: 1px solid #bbb;
+            display: flex; justify-content: flex-end; align-items: center;
+            padding: 0 20px;
+            z-index: 50;
+            padding-bottom: env(safe-area-inset-bottom);
+            height: calc(var(--footer-h) + env(safe-area-inset-bottom));
+        }
+
+        .main { 
+            position: absolute;
+            top: var(--header-h);
+            bottom: calc(var(--footer-h) + env(safe-area-inset-bottom));
+            left: 0; right: 0;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .pane { 
+            width: 50%; 
+            height: 100%; 
+            padding: 30px; 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; 
+            background: white; 
+            border-right: 5px solid #ccc; 
+        }
+        
+        @media (max-width: 768px) {
+            .main { flex-direction: column; }
+            .pane { width: 100%; height: 50%; border-right: none; border-bottom: 5px solid #ccc; }
+            .pane.full-screen { height: 100%; border: none; }
+        }
+
+        /* --- UI ELEMENTS --- */
+        header h1 { font-size: 1.1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .right-pane { background: #f8f9fa; }
+        .hidden { display: none !important; }
+        .full-screen { position: absolute; top:0; left:0; width: 100% !important; height: 100% !important; z-index: 40; border: none; }
+        
+        /* Print Header (Hidden on Screen) */
+        .print-header { display: none; }
+
+        /* Markdown & Footnotes */
+        .md-content img { max-width: 100%; height: auto; display: block; margin: 15px auto; border: 1px solid #ccc; }
+        .md-content h1, .md-content h2, .md-content h3 { color: #333; margin-top: 20px; }
+        .source-box { margin-bottom: 50px; border-bottom: 2px solid #ddd; padding-bottom: 30px; }
+        .footnote { font-size: 0.85rem; color: #666; border-top: 1px solid #eee; margin-top: 10px; padding-top: 5px; }
+        .footnote a { text-decoration: none; color: var(--btn-blue); }
+        sup { vertical-align: super; font-size: smaller; }
+
+        /* Questions */
+        .q-card { background: white; padding: 20px; margin-bottom: 25px; border: 1px solid #ccc; border-radius: 4px; }
+        .task-box { background: #e3f2fd; border-left: 5px solid #2196f3; padding: 20px; margin-bottom: 20px; border-radius: 4px; }
+        
+        /* Matrix Table */
+        .matrix-wrapper { overflow-x: auto; }
+        .matrix-table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 400px; }
+        .matrix-table th, .matrix-table td { border: 1px solid #bbb; padding: 10px; text-align: center; }
+        .matrix-table td:first-child { text-align: left; background: #fdfdfd; width: 40%; min-width: 150px; }
+        .correct-row { background-color: var(--correct-green) !important; }
+        .wrong-row { background-color: var(--wrong-red) !important; }
+
+        /* Editor */
+        .editor-box { background: white; border: 1px solid #ccc; height: 400px; display: flex; flex-direction: column; }
+        .toolbar { background: #e0e0e0; padding: 5px; display: flex; gap: 5px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
+        .editor-content { flex: 1; padding: 15px; overflow-y: auto; outline: none; font-family: 'Times New Roman', serif; font-size: 1.15rem; }
+        
+        /* Modal */
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:200; }
+        .modal-box { background: white; padding: 25px; width: 90%; max-width: 700px; height: 85vh; display: flex; flex-direction: column; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .preview-pane { flex: 1; border: 1px solid #ccc; padding: 20px; overflow-y: auto; font-family: 'Times New Roman', serif; white-space: pre-wrap; background: #fff; margin: 15px 0; }
+        .modal-header { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 0; }
+        .modal-steps { background: #e3f2fd; padding: 10px; border-radius: 4px; font-size: 0.9rem; color: #0d47a1; margin-top: 10px; }
+
+        /* --- PRINT PACKET STYLES --- */
+        @media print {
+            /* 1. SETUP PAGE MARGINS */
+            @page { margin: 0.75in; size: auto; }
+
+            /* 2. HIDE NON-PRINTABLE UI */
+            #copyModal, .modal-overlay, header, footer, .toolbar, button, #navBtn, .editor-wrapper-print { 
+                display: none !important; 
+            }
+
+            /* 3. SHOW PRINT HEADER */
+            .print-header {
+                display: flex !important;
+                justify-content: space-between;
+                align-items: flex-end;
+                border-bottom: 2px solid black;
+                margin-bottom: 20px;
+                padding-bottom: 5px;
+            }
+            .print-header h1 { margin: 0; font-size: 18pt; color: black; }
+            .print-header span { font-size: 12pt; font-weight: bold; color: black; }
+
+            /* 4. FORCE SHOW PART 2 (Even if hidden in App) */
+            #part2, #part2.hidden { 
+                display: block !important; 
+                visibility: visible !important; 
+            }
+
+            /* 5. RESET LAYOUT TO BLOCK DOCUMENT */
+            html, body { 
+                height: auto !important; 
+                overflow: visible !important; 
+                position: static !important; 
+                display: block !important;
+            }
+            .main, .pane, #leftPane, #rightPane, #sourceContainer, #questionsContainer {
+                position: static !important;
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                float: none !important;
+            }
+
+            /* 6. PAGE BREAK ARCHITECTURE */
+            
+            /* Sources */
+            .source-box { 
+                break-before: page !important; 
+                page-break-before: always !important; 
+                display: block !important;
+                border: none;
+            }
+            
+            /* SPECIAL RULE: The first source must NOT break, 
+               so it sits under the header on Page 1 */
+            #sourceContainer .source-box:first-of-type {
+                break-before: auto !important;
+                page-break-before: auto !important;
+                margin-top: 0;
+            }
+
+            /* Part 1 Questions */
+            #part1 {
+                break-before: page !important;
+                page-break-before: always !important;
+            }
+
+            /* Part 2: Task Instructions */
+            #part2 {
+                break-before: page !important;
+                page-break-before: always !important;
+            }
+            
+            #writingTaskContainer {
+                display: block !important;
+                page-break-after: auto;
+                break-after: auto;
+            }
+
+            /* 7. CONTENT STYLING */
+            body { font-size: 11pt; line-height: 1.4; color: black; }
+            h1, h2, h3 { color: black !important; page-break-after: avoid; }
+            
+            /* 8. INPUT CLEANUP */
+            #q2_text, .editor-box { display: none !important; }
+            
+            input[type="checkbox"] {
+                -webkit-appearance: none; appearance: none;
+                width: 16px; height: 16px; 
+                border: 1px solid #000;
+                background: white !important;
+                border-radius: 0;
+            }
+            input[type="checkbox"]:checked { background: white !important; }
+            
+            .matrix-table th, .matrix-table td { border: 1px solid #000 !important; }
+            .q-card { border: none !important; padding: 0 !important; margin-bottom: 30px !important; page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1 id="testTitle">Loading Assignment...</h1>
+    <div style="font-size: 0.9rem; color: #ddd;">Student View</div>
+</header>
+
+<div class="main">
+    <div class="pane" id="leftPane">
+        
+        <div class="print-header">
+            <h1 id="ph_title">Assignment Title</h1>
+            <span id="ph_grade">Grade X</span>
+        </div>
+
+        <button onclick="document.getElementById('leftPane').classList.toggle('full-screen')" style="float:right; margin-bottom:10px; padding:5px 10px;">⤢ Expand</button>
+        <div id="sourceContainer"></div>
+    </div>
+
+    <div class="pane right-pane" id="rightPane">
+        
+        <div id="part1">
+            <h2>Part 1: Research Questions</h2>
+            <div id="questionsContainer"></div>
+        </div>
+
+        <div id="part2" class="hidden">
+            <h2>Part 2: Writing Assignment</h2>
+            
+            <div id="writingTaskContainer" class="task-box md-content"></div>
+            
+            <div class="q-card editor-wrapper-print" style="padding:0; border:none;">
+                <div class="editor-box">
+                    <div class="toolbar">
+                        <button onclick="fmt('bold')"><b>B</b></button>
+                        <button onclick="fmt('italic')"><i>I</i></button>
+                        <button onclick="fmt('underline')"><u>U</u></button>
+                        <button onclick="fmt('insertOrderedList')">1.</button>
+                        <button onclick="fmt('insertUnorderedList')">•</button>
+                    </div>
+                    <div id="editor" class="editor-content" contenteditable="true"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <button id="navBtn" onclick="navigate()" style="padding:10px 25px; background:var(--btn-blue); color:white; border:none; border-radius:4px; font-weight:bold; font-size: 1rem;">Next Part ></button>
+</footer>
+
+<div id="copyModal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2 class="modal-header">Final Review</h2>
+        <div class="modal-steps">
+            <strong>Instructions:</strong>
+            1. Review your work below.
+            2. Click "Copy for Google Docs".
+            3. Paste (Ctrl+V) into your Google Doc.
+        </div>
+        
+        <div id="finalPreview" class="preview-pane" contenteditable="false"></div>
+        
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button onclick="document.getElementById('copyModal').classList.add('hidden')" style="background:transparent; border:1px solid #aaa; color:#555; padding:10px 20px; border-radius:4px; cursor:pointer;">Back to Edit</button>
+            <button onclick="copyWork()" style="background:var(--btn-blue); color:white; border:none; padding:10px 20px; border-radius:4px; font-weight:bold; cursor:pointer;">Copy for Google Docs</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const assignmentId = urlParams.get('id');
+    let isPart2 = false;
+    let config = null;
+
+    function loadScript() {
+        if (!assignmentId) return alert("No assignment ID found.");
+        const script = document.createElement('script');
+        script.src = `assignments/${assignmentId}/data.js`;
+        script.onload = () => init(window.assignmentData);
+        script.onerror = () => alert("Could not load assignment file. Check folder path.");
+        document.head.appendChild(script);
+    }
+
+    function parseFootnotes(text) {
+        text = text.replace(/\[\^(\d+)\](?!:)/g, '<sup><a href="#fn_$1" id="ref_$1">$1</a></sup>');
+        text = text.replace(/^\[\^(\d+)\]:\s+(.*)$/gm, 
+            '<div id="fn_$1" class="footnote"><strong>$1.</strong> $2 <a href="#ref_$1" style="text-decoration:none">↩</a></div>');
+        return text;
+    }
+
+    function init(data) {
+        config = data;
+        document.title = config.title;
+        document.getElementById('testTitle').innerText = config.title;
+        
+        // --- POPULATE PRINT HEADER ---
+        document.getElementById('ph_title').innerText = config.title;
+        if (config.grade) {
+            document.getElementById('ph_grade').innerText = "Grade " + config.grade;
+        } else {
+            document.getElementById('ph_grade').innerText = "";
+        }
+        // -----------------------------
+
+        const sourceCont = document.getElementById('sourceContainer');
+        config.sources.forEach(src => {
+            let processedText = parseFootnotes(src.content);
+            let html = marked.parse(processedText);
+            html = html.replace(/src="([^"]+)"/g, `src="assignments/${assignmentId}/$1"`);
+            const div = document.createElement('div');
+            // Adding specific class for source boxes to target in print
+            div.className = "source-box md-content"; 
+            div.innerHTML = `<h3 style="color:#555; text-transform:uppercase; border-bottom:1px solid #ccc;">${src.label}</h3>` + html;
+            sourceCont.appendChild(div);
+        });
+
+        if (config.writingTask) {
+             document.getElementById('writingTaskContainer').innerHTML = marked.parse(config.writingTask);
+        } else {
+             document.getElementById('writingTaskContainer').innerHTML = "<p>Write your essay below.</p>";
+        }
+
+        renderQuestions();
+        
+        const saved = JSON.parse(localStorage.getItem(`save_${assignmentId}`));
+        if(saved) {
+            if(saved.essay) document.getElementById('editor').innerHTML = saved.essay;
+            if(saved.q2 && document.getElementById('q2_text')) document.getElementById('q2_text').value = saved.q2;
+            if(saved.matrix) {
+                Object.keys(saved.matrix).forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.checked = saved.matrix[id];
+                });
+            }
+        }
+        setInterval(autoSave, 5000);
+    }
+
+    function renderQuestions() {
+        const cont = document.getElementById('questionsContainer');
+        config.questions.forEach((q, idx) => {
+            const div = document.createElement('div');
+            div.className = "q-card";
+            if(q.type === 'matrix') {
+                let headerHTML = '<th>Idea</th>';
+                q.headers.forEach(h => { headerHTML += `<th>${h}</th>`; });
+
+                let rowsHTML = '';
+                q.rows.forEach((r, rIdx) => {
+                    let checkboxesHTML = '';
+                    q.headers.forEach((_, colIdx) => {
+                        checkboxesHTML += `<td><input type="checkbox" id="q${idx}_r${rIdx}_c${colIdx}"></td>`;
+                    });
+                    rowsHTML += `<tr id="q${idx}_r${rIdx}"><td>${r.text}</td>${checkboxesHTML}</tr>`;
+                });
+
+                div.innerHTML = `<strong>${idx+1}. ${q.prompt}</strong>
+                    <div class="matrix-wrapper">
+                        <table class="matrix-table">
+                            <thead><tr>${headerHTML}</tr></thead>
+                            <tbody>${rowsHTML}</tbody>
+                        </table>
+                    </div>
+                    <div style="text-align:right; margin-top:10px;">
+                        <span id="fb_${idx}" style="font-weight:bold; margin-right:10px;"></span>
+                        <button onclick="checkMatrix(${idx})">Check Answers</button>
+                    </div>`;
+            } else if (q.type === 'short_response') {
+                // The textarea will be hidden by print CSS
+                div.innerHTML = `<strong>${idx+1}. ${q.prompt}</strong>
+                <textarea id="q2_text" style="width:100%; height:100px; margin-top:10px; border:1px solid #ccc; font-family:inherit; padding:10px;"></textarea>`;
+            }
+            cont.appendChild(div);
+        });
+    }
+
+    function checkMatrix(qIdx) {
+        const q = config.questions[qIdx];
+        let allCorrect = true;
+        q.rows.forEach((row, rIdx) => {
+            let rowCorrect = true;
+            row.answer.forEach((ans, colIdx) => {
+                const checkboxId = `q${qIdx}_r${rIdx}_c${colIdx}`;
+                const isChecked = document.getElementById(checkboxId).checked;
+                if(isChecked !== ans) rowCorrect = false;
+            });
+            document.getElementById(`q${qIdx}_r${rIdx}`).className = rowCorrect ? 'correct-row' : 'wrong-row';
+            if(!rowCorrect) allCorrect = false;
+        });
+        const fb = document.getElementById(`fb_${qIdx}`);
+        fb.innerText = allCorrect ? "Correct!" : "Check the red rows.";
+        fb.style.color = allCorrect ? "green" : "red";
+    }
+
+    function autoSave() {
+        const matrixState = {};
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            matrixState[cb.id] = cb.checked;
+        });
+        const data = {
+            q2: document.getElementById('q2_text') ? document.getElementById('q2_text').value : '',
+            essay: document.getElementById('editor').innerHTML,
+            matrix: matrixState
+        };
+        localStorage.setItem(`save_${assignmentId}`, JSON.stringify(data));
+    }
+
+    function navigate() {
+        if(!isPart2) {
+            if(confirm("Finished with Part 1?")) {
+                document.getElementById('part1').classList.add('hidden');
+                document.getElementById('part2').classList.remove('hidden');
+                document.getElementById('navBtn').innerText = "Review & Turn In";
+                isPart2 = true;
+                document.getElementById('rightPane').scrollTop = 0;
+            }
+        } else {
+            const q2 = document.getElementById('q2_text') ? document.getElementById('q2_text').value : '';
+            const essay = document.getElementById('editor').innerHTML;
+            document.getElementById('finalPreview').innerHTML = `<h3>Short Response</h3><p>${q2}</p><hr><h3>Essay</h3>${essay}`;
+            document.getElementById('copyModal').classList.remove('hidden');
+        }
+    }
+
+    function copyWork() {
+        const node = document.getElementById('finalPreview');
+        const range = document.createRange(); range.selectNode(node);
+        window.getSelection().removeAllRanges(); window.getSelection().addRange(range);
+        document.execCommand('copy');
+        alert("Copied to Clipboard! You can now paste into Google Docs.");
+    }
+    function fmt(cmd) { document.execCommand(cmd); document.getElementById('editor').focus(); }
+    loadScript();
+</script>
+</body>
+</html>

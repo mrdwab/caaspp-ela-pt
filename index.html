@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Writing Portal</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h1 { text-align: center; color: #333; margin-bottom: 30px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
+        select { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+        button { width: 100%; padding: 12px; background: #0070c0; color: white; border: none; border-radius: 4px; font-size: 1.1rem; cursor: pointer; }
+        button:hover { background: #005a9c; }
+        .footer { text-align: center; font-size: 0.8rem; color: #aaa; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>🚀 Writing Portal</h1>
+    
+    <form id="loginForm">
+        <label>Grade Level</label>
+        <select id="grade" onchange="updateAssignments()">
+            <option value="3">Grade 3</option>
+            <option value="4">Grade 4</option>
+            <option value="5">Grade 5</option>
+            <option value="6">Grade 6</option>
+        </select>
+
+        <label>Assignment</label>
+        <select id="assignment">
+            </select>
+
+        <button type="submit">Start Assignment</button>
+        <div class="footer">v2.1 • Offline Ready</div>
+    </form>
+</div>
+
+<script>
+    // --- ASSIGNMENT DATABASE ---
+    const library = {
+        "3": [
+            { id: "g3_nasa", name: "Informational: Black Women at NASA" },
+            { id: "g3_pets", name: "Opinion: Classroom Pets" },
+            { id: "g3_astro", name: "Narrative: Astronaut Adventure" }
+        ],
+        "4": [
+            { id: "g4_earthquakes", name: "Informational: Earthquakes" },
+            { id: "g4_pets", name: "Opinion: Classroom Pets" },
+            { id: "g4_ants", name: "Narrative: Ant Colony" }
+        ],
+        "5": [
+            { id: "g5_earthquakes", name: "Informational: Earthquakes" },
+            { id: "g5_fieldtrips", name: "Opinion: Virtual Field Trips" },
+            { id: "g5_whales", name: "Narrative: Whales" }
+        ],
+        "6": [
+            { id: "g6_nasa", name: "Explanatory: Black Women at NASA" },
+            { id: "g6_latestart", name: "Argumentative: Later School Start Times" },
+            { id: "g6_middleschool", name: "Argumentative: The Grade 6 Debate" },
+            { id: "g6_robots", name: "Narrative: Robots (2 Source Version)" }
+        ]
+    };
+
+    function updateAssignments() {
+        const grade = document.getElementById('grade').value;
+        const select = document.getElementById('assignment');
+        select.innerHTML = ""; 
+        
+        const tasks = library[grade] || [];
+        
+        if (tasks.length === 0) {
+            const opt = document.createElement('option');
+            opt.innerText = "No assignments loaded yet";
+            select.appendChild(opt);
+        } else {
+            tasks.forEach(task => {
+                const opt = document.createElement('option');
+                opt.value = task.id;
+                opt.innerText = task.name;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    document.getElementById('loginForm').onsubmit = function(e) {
+        e.preventDefault();
+        const assignmentId = document.getElementById('assignment').value;
+        if (!assignmentId) return;
+        // Redirect to the engine
+        window.location.href = `test.html?id=${assignmentId}`;
+    };
+
+    // Initialize list
+    updateAssignments();
+
+    // --- FIX FOR BACK BUTTON NAVIGATION ---
+    window.addEventListener('pageshow', function() {
+        const gradeSelect = document.getElementById('grade');
+        // Triggers the 'change' event to force the list to update 
+        // if the browser remembered the Grade selection but not the list state.
+        if (gradeSelect.value) {
+            gradeSelect.dispatchEvent(new Event('change'));
+        }
+    });
+</script>
+
+</body>
+</html>
