@@ -40,7 +40,7 @@ Now begin work on your opinion essay. Manage your time carefully so that you can
         {
             label: "Task",
             content: `
-Your class is thinking about getting a classroom pet. You and your classmates have been learning about different animals that are kept as pets. You want to learn more and decide to do more research on what animals make the best classroom pets. You have found two articles about classroom pets.
+Your class is thinking about getting a classroom pet. You and your classmates have been learning about different animals that are kept as pets. You want to learn more and decide to do more research on what animals make the best classroom pets. You have found three articles about classroom pets.
 
 After you have looked at these sources, you will answer some questions about them. Briefly scan the sources and the questions that follow. Then, go back and read the sources carefully so you will have the information you will need to answer the questions and complete your research.
 
